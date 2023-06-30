@@ -1,0 +1,23 @@
+__header__:  b'MATLAB 5.0 MAT-file, Platform: GLNXA64, Created on: Fri Jun 23 13:34:48 2023'
+__version__:  1.0
+__globals__:  []
+X_shape:  (299151, 18)
+y_shape:  (299151,)
+y_unique:  (array(['conv_FOR', 'conv_PLA', 'divergence'], dtype='<U10'), array([ 75855,  73536, 149760]))
+shuffle:  True
+norm:  True
+divergence:  dict_keys(['Divs_Copula', 'KLDIcv', 'KLDIggam', 'KLDImoy', 'KLDIrggau', 'KLDIvar'])
+divergence_shape:  [(774, 774, 3), (774, 774, 3), (774, 774, 3), (774, 774, 3), (774, 774, 3), (774, 774, 3)]
+X_min:  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+X_max:  [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+X_mean:  [0.00369703 0.00270765 0.21373115 0.18801008 0.069283   0.12302187
+ 0.07137717 0.06569477 0.08819099 0.04339148 0.06667281 0.07774201
+ 0.02717218 0.02913649 0.07704894 0.04824704 0.05653658 0.04058955]
+tiff_shape:  (299151, 32, 32, 6)
+tiff_unique:  (array(['conv_FOR', 'conv_PLA', 'divergence'], dtype='<U10'), array([ 75855,  73536, 149760]))
+tiff_min:  [0. 0. 0. 0. 0. 0.]
+tiff_max:  [1. 1. 1. 1. 1. 1.]
+tiff_mean:  [0.02002553 0.02865128 0.00281516 0.01694787 0.02761946 0.00307198]
+tiff_path:  data/divdata_ete/*.tif
+tiff_shuffle:  True
+tiff_norm:  True
