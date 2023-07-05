@@ -1,62 +1,19 @@
-from architecture import *
-
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-
-from tensorflow.keras.utils import to_categorical
-from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
-from tqdm import tqdm
+from architecture import arch1, arch2, arch3, arch4, arch5, arch6
+from utils import (
+    load_h5,
+    report_prediction,
+    init_logger,
+    dump_pkl,
+    write_report,
+)
+from data_preparation import prepare_data_cnn
 
 from tensorflow.keras.callbacks import EarlyStopping
+from tqdm import tqdm
 import pandas as pd
-
-from utils_II import *
-
-
-def generate_random_labels(labels, false_percentage):
-    unique_labels = np.unique(labels)
-    num_false_labels = int(len(labels) * false_percentage)
-    idx = np.arange(len(labels))
-
-    np.random.shuffle(idx)
-    idx = idx[:num_false_labels]
-    labels_copy = labels.copy()
-    proba = np.unique(labels_copy[idx], return_counts=True)[1] / len(labels_copy[idx])
-    for i in tqdm(idx):
-        unqlbl = np.where(unique_labels != labels_copy[i])[0]
-        prob = proba[unqlbl]
-        prob = prob / np.sum(prob)
-        labels_copy[i] = np.random.choice(
-            unique_labels[unqlbl], size=1, replace=False, p=prob
-        )[0]
-    return labels_copy
-
-
-def prepare_data_cnn(
-    X, y, frac_test=0.2, frac_val=0.15, frac_false=-1, categorical=True
-):
-    le = LabelEncoder()
-    y = le.fit_transform(y)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=frac_test)
-    if frac_false > 0:
-        y_train = generate_random_labels(y_train, frac_false)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=frac_val
-    )
-    if categorical:
-        y_train = to_categorical(y_train)
-        y_test = to_categorical(y_test)
-        y_val = to_categorical(y_val)
-    return X_train, X_test, X_val, y_train, y_test, y_val, le
-
-
-def count_sample_different_per_classe(y, yn):
-    unique_labels = np.unique(y)
-    for i in unique_labels:
-        print(
-            f"{i} : ",
-            np.sum(yn[np.where(y == i)[0]] != y[np.where(y == i)[0]]) / np.sum(y == i),
-        )
+import numpy as np
+import os
+from datetime import datetime
 
 
 def logg_info_data(
@@ -75,6 +32,57 @@ def logg_info_data(
     categorical,
     logg,
 ):
+    """Log information about the data
+
+    Parameters
+    ----------
+    X_train : numpy array
+        Input data (features) for training
+
+    X_test : numpy array
+        Input data (features) for testing
+
+    X_val : numpy array
+        Input data (features) for validation
+
+    y_train : numpy array
+        Labels of the data (str or int) for training
+
+    y_test : numpy array
+        Labels of the data (str or int) for testing
+
+    y_val : numpy array
+        Labels of the data (str or int) for validation
+
+    le : sklearn.preprocessing.LabelEncoder
+        LabelEncoder used to encode the labels
+
+    frac_test : float
+        Fraction of the data to use for testing
+
+    frac_val : float
+        Fraction of the data to use for validation
+
+    frac_false : float
+        Percentage of false labels to generate
+
+    n_epochs : int
+        Number of epochs to train the model
+
+    batch_size : int
+        Batch size to use for training
+
+    categorical : bool
+        If True, encode the labels using to_categorical
+
+    logg : logging
+        Logger
+
+    Returns
+    -------
+    logging
+        Logger with the information about the data
+    """
     logg.info("Data loaded")
     logg.info("Preparing data")
     logg.info(f"fraction test : {frac_test}")
@@ -94,29 +102,20 @@ def logg_info_data(
     return logg
 
 
-def report_prediction(y_true, y_pred, le, logg):
-    logg.info("----------- REPORT -----------")
-    y_true = y_true.argmax(axis=1)
-    y_pred = y_pred.argmax(axis=1)
-    y_true = le.inverse_transform(y_true)
-    y_pred = le.inverse_transform(y_pred)
-    logg.info(f"confusion matrix : ")
-    cfm = pd.DataFrame(
-        100 * confusion_matrix(y_true, y_pred, normalize="all").round(4),
-        columns=le.classes_,
-        index=le.classes_,
-    )
-    logg.info(cfm.to_string())
-    f1 = 100 * f1_score(y_true, y_pred, average="macro").round(5)
-    acc = 100 * accuracy_score(y_true, y_pred).round(5)
-    logg.info(f"f1 score : {f1}")
-    logg.info(f"accuracy score : {acc}")
-    logg.info("----------- END REPORT -----------")
-
-    return logg, f1, acc
-
-
 def extract_best_lr(dic):
+    """Extract the best learning rate for each model stored in a dictionary
+
+    Parameters
+    ----------
+    dic : dict
+        Dictionary with the f1 and accuracy for each model and learning rate
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe with the best learning rate for each model
+    """
+
     pdf = pd.DataFrame(dic).T
     pdf.columns = ["f1", "acc"]
     pdf["learning_rate"] = pdf.index.str.split("_").str[1].astype(float)
@@ -124,6 +123,42 @@ def extract_best_lr(dic):
     pdf.reset_index(drop=True, inplace=True)
     best_lr_per_model = pdf.groupby("model").apply(lambda x: x.loc[x["f1"].idxmax()])
     return best_lr_per_model
+
+
+def info_training(m, h, logg, dic):
+    """Log information about the training of a keras model, calculate the f1 and accuracy and store them in a dictionary.
+    Log the first and last loss and val_loss
+
+    Parameters
+    ----------
+    m : keras model
+        Model to train
+
+    h : keras history
+        History of the training
+
+    logg : logging
+        Logger
+
+    dic : dict
+        Dictionary with the f1 and accuracy for each model and learning rate
+
+    Returns
+    -------
+    logging
+        Logger with the information about the training
+    """
+    logg.info(f"Model trained")
+    top = {np.array(h.history["loss"])[0].round(5)}
+    end = {np.array(h.history["loss"])[-1].round(5)}
+    logg.info(f"Loss:  {top} -> {end}")
+    top_val = {np.array(h.history["val_loss"])[0].round(5)}
+    end_val = {np.array(h.history["val_loss"])[-1].round(5)}
+    logg.info(f"Val loss:  {top_val} -> {end_val}")
+    ypred = m.predict(X_test)
+    logg, f1, acc = report_prediction(y_test, ypred, le, logg)
+    dic[name_model] = [f1, acc]
+    return logg, dic
 
 
 if __name__ == "__main__":
@@ -145,8 +180,8 @@ if __name__ == "__main__":
     batch_size = 4096
 
     name_folder = datetime.now().strftime("%d%m%y_%HH%MM%S")
-    path_results = f"results/{name_folder}/"
-    path_data = "data/divergence_process.h5"
+    path_results = f"../data/results/{name_folder}/"
+    path_data = "../data/divergence_process.h5"
     os.makedirs(path_results, exist_ok=True)
     logg, pathlog = init_logger(path_results)
 
@@ -201,24 +236,11 @@ if __name__ == "__main__":
                 use_multiprocessing=True,
                 verbose=0,
             )
-            logg.info(f"Model trained")
-            top = {np.array(h.history["loss"])[0].round(5)}
-            end = {np.array(h.history["loss"])[-1].round(5)}
-            logg.info(f"Loss:  {top} -> {end}")
-            top_val = {np.array(h.history["val_loss"])[0].round(5)}
-            end_val = {np.array(h.history["val_loss"])[-1].round(5)}
-            logg.info(f"Val loss:  {top_val} -> {end_val}")
-            ypred = m.predict(X_test)
-            print(ypred.shape, y_test.shape)
-            logg, f1, acc = report_prediction(y_test, ypred, le, logg)
-            dic[name_model] = [f1, acc]
+            logg, dic = info_training(m, h, logg, dic)
             del m, h
     dump_pkl(dic, os.path.join(path_results, "dic.pkl"))
 
-    ############################
-
     best_lr_per_model = extract_best_lr(dic)
-    # print(best_lr_per_model)
     logg.info(f"best_lr_per_model : \n{best_lr_per_model}")
 
     pathreport = os.path.join(path_results, "report.txt")

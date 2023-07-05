@@ -1,31 +1,86 @@
-from explore_learning import *
+from explore_learning import report_prediction
+from data_preparation import prepare_data_cnn
+
 from sklearn.model_selection import StratifiedKFold
+
+from utils import report_metric_from_log, init_logger, dump_pkl, load_h5, write_report
+from architecture import arch1, arch2, arch4
+import os
+from datetime import datetime
+from tensorflow.keras.callbacks import EarlyStopping
 
 
 def Kfold_learning_rate(
     model, learning_rate, X, y, frac_val, batch_size, n_epochs, callbacks, logg
 ):
+    """Evaluate the keras model with kfold cross validation, and return the f1, accuracy score and the weights learned
+
+    Parameters
+    ----------
+    model : keras model
+        Model to evaluate
+
+    learning_rate : float
+        Learning rate of the model
+
+    X : np.array
+        Input data (features) be careful to have the same shape as the input of the model
+
+    y : np.array
+        Labels of the data (str or int)
+
+    frac_val : float
+        Fraction of the data to use for validation
+
+    batch_size : int
+        Batch size to use for training
+
+    n_epochs : int
+        Number of epochs to train the model
+
+    callbacks : list
+        List of callbacks to use for training
+
+    logg : logging
+        Logger
+
+    Returns
+    -------
+    list
+        List of f1 score for each fold
+
+    list
+        List of accuracy score for each fold
+
+    logging
+        Logger
+
+    list
+        List of weights learned for each fold
+    """
     skf = StratifiedKFold(n_splits=5, shuffle=True)
     kfold = 0
     f1 = []
     acc = []
-    le = LabelEncoder()
-    y = le.fit_transform(y)
     weights = []
     for train_index, test_index in skf.split(X, y):
         logg.info(f"Kfold : {kfold}")
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        X_train, X_val, y_train, y_val = train_test_split(
-            X_train, y_train, test_size=frac_val
+
+        X_train, X_test, X_val, y_train, y_test, y_val, le = prepare_data_cnn(
+            X,
+            y,
+            frac_val=frac_val,
+            frac_false=-1,
+            categorical=True,
+            idx_train=train_index,
+            idx_test=test_index,
         )
-        y_train = to_categorical(y_train)
-        y_test = to_categorical(y_test)
-        y_val = to_categorical(y_val)
+
         m = model(learning_rate, num_classes=y_train.shape[1])
         logg.info("#" * 50)
         logg.info(f"Learning rate : {learning_rate}")
         m.summary(print_fn=lambda x: logg.info(x))
+
         h = m.fit(
             X_train,
             y_train,
@@ -54,18 +109,6 @@ def Kfold_learning_rate(
     return f1, acc, logg, weights
 
 
-def report_kfold(dic, logg):
-    logg.info(f"======== Final report ========")
-    for i in list(dic.keys()):
-        logg.info(f"-------- Model : {i} --------")
-        f1 = dic[i]["f1"]
-        acc = dic[i]["acc"]
-        logg.info(f"f1 : {np.mean(f1)} +/- {np.std(f1)}")
-        logg.info(f"acc : {np.mean(acc)} +/- {np.std(acc)}")
-    logg.info(f"======== End report ========")
-    return logg
-
-
 if __name__ == "__main__":
     frac_false = -1
     frac_test = 0.2
@@ -85,8 +128,8 @@ if __name__ == "__main__":
     batch_size = 4096
 
     name_folder = datetime.now().strftime("%d%m%y_%HH%MM%S")
-    path_results = f"results/{name_folder}/"
-    path_data = "data/divergence_process.h5"
+    path_results = f"../data/results/{name_folder}/"
+    path_data = "../data/divergence_process.h5"
     os.makedirs(path_results, exist_ok=True)
     logg, pathlog = init_logger(path_results)
 
@@ -117,6 +160,6 @@ if __name__ == "__main__":
     }
     dump_pkl(dic, os.path.join(path_results, "kfold_dic.pkl"))
 
-    logg = report_kfold(dic, logg)
+    logg = report_metric_from_log(dic, logg)
     pathreport = os.path.join(path_results, "report.txt")
     write_report(pathlog, pathreport)

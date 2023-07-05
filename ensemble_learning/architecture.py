@@ -1,5 +1,3 @@
-from prepare_dataset import *
-
 from tensorflow.keras.layers import Layer
 from tensorflow.nn import pool
 from tensorflow import expand_dims, squeeze

@@ -1,8 +1,38 @@
-from utils_II import *
+import os
 import numpy as np
+
+from utils import open_pkl
+
+import matplotlib as mpl
+
+mpl.use("pgf")
+import matplotlib.pyplot as plt
+
+plt.rcParams.update(
+    {
+        "font.family": "serif",  # use serif/main font for text elements
+        "text.usetex": True,  # use inline math for ticks
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": "\n".join(
+            [
+                r"\usepackage[utf8x]{inputenc}",
+                r"\usepackage[T1]{fontenc}",
+                r"\usepackage{cmbright}",
+            ]
+        ),
+    }
+)
 
 
 def figure_divergence_weights(patthw):
+    """Plot the weights of the learned combination of the divergence measures
+
+    Parameters
+    ----------
+    patthw : str
+        Path to the pickle file containing the weights
+    """
+
     weights = open_pkl(patthw)
     w = []
     b = []
@@ -57,13 +87,14 @@ def figure_divergence_weights(patthw):
         if i == 0:
             a[i].set_ylabel("Valeur Poids", fontsize=15, fontweight="bold")
     plt.tight_layout()
+    drname = os.path.dirname(patthw).split("/")[-1]
     plt.savefig(
-        os.path.join(os.path.dirname(patthw), "weight.pdf"),
+        os.path.join(f"../figures/{drname}_weights.pdf"),
         bbox_inches="tight",
         backend="pgf",
     )
 
 
 if __name__ == "__main__":
-    patthw = "results/300623_15H32M00/weights_arch1.pkl"
+    patthw = "../results/300623_15H32M00/weights_arch1.pkl"
     figure_divergence_weights(patthw)
