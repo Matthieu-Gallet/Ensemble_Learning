@@ -26,3 +26,30 @@ Ensemble_Learning
 └── fig
     └── weight.pdf
 ```
+
+### Acknowledgements
+
+The authors would like to thank the *Spanish Instituto Nacional de Tecnica Aerospacial* (INTA) for the PAZ images (Project AO-001-051) .
+
+
+
+Feel free to ask if any question.
+
+If you use this work in your research and find it useful, please cite using the following bibtex reference:
+
+```
+@inproceedings{gallet:hal-04184390,
+  TITLE = {{Apprentissage explicable d'un ensemble de divergences pour la similarit{\'e} inter-classe de donn{\'e}es SAR}},
+  AUTHOR = {Gallet, Matthieu and Atto, Abdourrahmane and Trouv{\'e}, Emmanuel and Karbou, Fatima},
+  URL = {https://hal.science/hal-04184390},
+  BOOKTITLE = {{GRETSI, XXIX{\`e}me Colloque Francophone de Traitement du Signal et des Images}},
+  ADDRESS = {Grenoble, France},
+  ORGANIZATION = {{GRETSI}},
+  YEAR = {2023},
+  MONTH = Aug,
+  PDF = {https://hal.science/hal-04184390/file/GRETSI_DIV23_version2.pdf},
+  HAL_ID = {hal-04184390},
+  HAL_VERSION = {v1},
+}
+```
+
